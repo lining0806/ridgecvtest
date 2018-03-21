@@ -1,3 +1,75 @@
+optforwardtest system
+=====================
+
+
+command:  
+
+    python optforwardtest.py -i ./data/IF.csv -of ./results/results.csv -op ./results/results.png -nj 3 -lp 10 -dn 1 -cl knn
+help:  
+    
+    -i the input file
+    -of the output file which records time index, predict label, and close
+    -op the output file which describes sigsum and accuracy
+    -nj number of jobs to run in parallel
+    -lp length of periods to predict, not number of points to predict
+    -dn length of periods to shift
+    -cl classifier
+	
+**'''1. DATA PREPARING'''**  
+key point:  
+
+    rs_num and nrows:
+    	you can change rs_num and nrows to determine the beginning and last time for the csv file reading 
+    resample_time:
+    	you can change resample time, by time-resampling way or point-resampling way
+    zero_propotion:
+    	you can change the variable, which describes the propotion of zero, to calculate the train data label
+		
+**'''2. FEATURE EXTRACTION'''**  
+key point:
+ 
+	features: 
+	window_size:
+		length of data default, you can change it if you like
+	test_size:
+		diff_n default, or greater than diff_n
+		
+**'''3. CLASSIFICATION'''**  
+* in this stage, you can achivement classification by multi_feature way or multi_classification way  
+* in multi_feature way, different kinds of features may be gernerated together for one classifier  
+* in multi_classification way, each classifier may output results, and you can combine them by vote or other  
+* a simple classifier named mean classifier is added, based on the assumption that next close is the mean close of current window including current point
+
+>
+窗口长度是window_size，这里的diff_n即timeshift  
+diff_n的取值可以是1,2,3,4,5等等，也就是说如果diff_n等于2的时候，在训练数据定义label的时候，是指当前close与其后第2个点close的对比做出的一个方向。  
+换句话说，当前的close的label利用了未来第2个点的close信息。  
+所以我们在划分trainset和testset的时候，test_size必须大于等于diff_n才行，才能保证trainset不会偷看testset之后的close信息。（由此得出test_size=diff_n）  
+而我们要预测的是testset的label，特别是test[-1]。这就意味着，test[-1]得到的label，我们可以知道其后第2个点的close的升降。  
+所以窗口滑动的时候，要保证每次都取到当前预测点其后第2个点。（由此得出step=diff_n）  
+这样写入文件的，是每隔2分钟的预测点的close，index和预测的label。我们可以根据这些信息画出sigsum曲线来。  
+>
+而resampletime是我们每次读取窗口内数据的采样，对于最后一个点test[-1]来说，意味着前面数据的稀释。我们采样的目的是，数据可能冗余太多，所以要按照resampletime采样。  
+但是对于采样后的窗口来说，里面数据的label定义还是基于diff_n来做的，也就是一个点的label是当前close与其后第2个点的close的对比做出的一个方向。  
+
+
+**前推的思路：**
+
+    先截取原始数据，窗口步长为diff_n，因为预测的是后diff_n的方向。
+    再对截取的片断采样。
+    注意计算label时候采用periods=int(diff_n/resample_time)，并生成特征。
+    为了保证训练集相邻点之间的特征计算，resample_time应该与diff_n一致。
+    测试集为int(diff_n/resample_time)。
+
+**不前推的思路：** 
+
+    先采样原始数据。
+    注意计算label时候采用periods=int(diff_n/resample_time)，并生成特征。
+    为了保证训练集相邻点之间的特征计算，resample_time应该与diff_n一致。
+    再截取生成特征，窗口步长为int(diff_n/resample_time)，因为预测的是后diff_n的方向。
+    测试集为int(diff_n/resample_time)。
+
+
 ## The Default Project for LiNing
 
 ##### Please Do Not make any change without permission~
